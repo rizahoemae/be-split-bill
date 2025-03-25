@@ -1,0 +1,24 @@
+{
+	"name": "Split Bill",
+	"version": "1.0.0",
+	"description": "otw",
+	"main": "app.js",
+	"scripts": {
+		"dev": "nodemon --env-file=.env app.js",
+		"prepare": "husky"
+	},
+	"dependencies": {
+		"express": "^4.21.2",
+		"http-status": "^2.1.0",
+		"mysql": "^2.18.1",
+		"nodemon": "^3.1.9",
+		"sequelize": "^6.37.6",
+		"uuid": "^11.1.0"
+	},
+	"devDependencies": {
+		"@commitlint/cli": "^19.8.0",
+		"@commitlint/config-conventional": "^19.8.0",
+		"husky": "^9.1.7",
+		"mysql2": "^3.14.0"
+	}
+}
