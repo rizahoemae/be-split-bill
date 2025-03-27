@@ -1,23 +1,22 @@
+const { status } = require("http-status");
+
 const catchAsync = (fn) => (req, res, next) => {
   Promise.resolve(fn(req, res, next)).catch((err) => next(err));
 };
 
-// class ApiError extends Error {
-//     constructor(statusCode, message, isOperational = true, stack = '') {
-//       super(message);
-//       this.statusCode = statusCode;
-//       this.isOperational = isOperational;
-//       if (stack) {
-//         this.stack = stack;
-//       } else {
-//         Error.captureStackTrace(this, this.constructor);
-//       }
-//     }
-//   }
 const apiError = (res, code, message) => {
   return res.status(code).send({
     status_code: code,
     message: message,
   });
 };
-module.exports = { catchAsync, apiError };
+
+const response = (res, result, message = status["200_MESSAGE"]) => {
+  res.status(200).send({
+    status_code: 200,
+    message: message,
+    result: result,
+  });
+  throw new Error(message);
+};
+module.exports = { catchAsync, apiError, response };

@@ -2,6 +2,8 @@ const express = require("express");
 const port = 3000;
 const routes = require("./src/routes");
 const sequelize = require("./src/config/db");
+const redis = require("./src/config/redis");
+
 const app = express();
 app.use(express.json());
 app.get("/test", (req, res) => {
@@ -9,11 +11,12 @@ app.get("/test", (req, res) => {
 });
 app.use("/api", routes);
 
-sequelize.sync({ alter: true });
+// sequelize.sync({ alter: true });
 
 sequelize
   .authenticate()
-  .then(() => {
+  .then(async () => {
+    await redis.connect();
     app.listen(port, () => {
       console.log(`Example app listening on port ${port}`);
     });
@@ -21,6 +24,5 @@ sequelize
   .catch((err) => {
     console.error("Database connection failed:", err);
   });
-
 
 module.exports = app;

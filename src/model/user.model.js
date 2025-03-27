@@ -1,5 +1,11 @@
 const { Sequelize, DataTypes } = require("sequelize");
 const sequelize = require("../config/db");
+const bcrypt = require("bcrypt");
+const jwt = require("jsonwebtoken");
+
+const saltRounds = 10;
+const accessKey = process.env.ACCESS_KEY;
+const refreshKey = process.env.REFRESH_KEY;
 
 const User = sequelize.define(
   "User",
@@ -40,5 +46,27 @@ User.alreadyExists = async function (email) {
   return user;
 };
 
+User.generatePassword = async function (password) {
+  return bcrypt.hash(password, saltRounds);
+};
+
+User.comparePassword = async function (password, hashedPassword) {
+  return bcrypt.compare(password, hashedPassword);
+};
+
+User.generateAccessToken = function (payload) {
+  return jwt.sign(payload, accessKey, { expiresIn: "1h" });
+};
+
+User.generateRefreshToken = function (payload) {
+  return jwt.sign(payload, refreshKey, { expiresIn: "7d" });
+};
+
+User.compareAccessToken = function (token) {
+  return jwt.verify(token, accessKey);
+};
+User.compareRefreshToken = function (token) {
+  return jwt.verify(token, refreshKey);
+};
 
 module.exports = User;
