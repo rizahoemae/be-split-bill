@@ -2,7 +2,7 @@ const { Sequelize, DataTypes } = require("sequelize");
 const sequelize = require("../config/db");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
-
+const { apiError } = require("../utils");
 const saltRounds = 10;
 const accessKey = process.env.ACCESS_KEY;
 const refreshKey = process.env.REFRESH_KEY;
@@ -13,7 +13,6 @@ const User = sequelize.define(
     user_id: {
       type: DataTypes.STRING,
       primaryKey: true,
-      autoIncrement: true,
     },
     name: {
       type: DataTypes.STRING,
@@ -22,7 +21,6 @@ const User = sequelize.define(
     email: {
       type: DataTypes.STRING,
       allowNull: false,
-      unique: true,
     },
     password: {
       type: DataTypes.STRING,
@@ -38,6 +36,13 @@ const User = sequelize.define(
     timestamps: true,
     createdAt: "created_at",
     updatedAt: "updated_at",
+    indexes: [
+      {
+        unique: true,
+        fields: ["email"],
+        name: "email_index",
+      },
+    ],
   }
 );
 
@@ -63,8 +68,13 @@ User.generateRefreshToken = function (payload) {
 };
 
 User.compareAccessToken = function (token) {
-  return jwt.verify(token, accessKey);
+  try {
+    return jwt.verify(token, accessKey);
+  } catch (err) {
+    return err;
+  }
 };
+
 User.compareRefreshToken = function (token) {
   return jwt.verify(token, refreshKey);
 };

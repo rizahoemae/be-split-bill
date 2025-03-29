@@ -3,7 +3,7 @@ const port = 3000;
 const routes = require("./src/routes");
 const sequelize = require("./src/config/db");
 const redis = require("./src/config/redis");
-
+const mode = process.env.NODE_ENV || "development";
 const app = express();
 app.use(express.json());
 app.get("/test", (req, res) => {
@@ -11,7 +11,9 @@ app.get("/test", (req, res) => {
 });
 app.use("/api", routes);
 
-// sequelize.sync({ alter: true });
+if (mode === "development") {
+  sequelize.sync({ alter: true });
+}
 
 sequelize
   .authenticate()
