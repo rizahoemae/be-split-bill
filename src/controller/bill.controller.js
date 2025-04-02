@@ -22,9 +22,15 @@ const deleteOne = catchAsync(async (req, res) => {
   res.status(status.OK).send(user);
 });
 
+const updatePayment = catchAsync(async (req, res) => {
+  const user = await billService.updatePayment(req, res);
+  res.status(status.OK).send(user);
+});
+
 module.exports = {
   getAll,
   create,
   getOne,
-  deleteOne
+  deleteOne,
+  updatePayment,
 };

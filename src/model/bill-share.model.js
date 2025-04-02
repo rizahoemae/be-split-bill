@@ -8,10 +8,10 @@ const BillShare = sequelize.define(
       type: DataTypes.STRING,
       primaryKey: true,
     },
-    item_id: {
-      type: DataTypes.STRING,
-      allowNull: false,
-    },
+    // item_id: {
+    //   type: DataTypes.STRING,
+    //   allowNull: false,
+    // },
     bill_id: {
       type: DataTypes.STRING,
       allowNull: false,

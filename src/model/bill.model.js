@@ -1,6 +1,7 @@
 const { Sequelize, DataTypes } = require("sequelize");
 const sequelize = require("../config/db");
-
+const Item = require("./item.model");
+// const Participant = require("./participant.model");
 const Bill = sequelize.define(
   "Bill",
   {
@@ -59,4 +60,10 @@ const Bill = sequelize.define(
   }
 );
 
+// Bill.hasMany(Participant, {
+//   foreignKey: "bill_id",
+// });
+// Bill.hasMany(Item, {
+//   foreignKey: "bill_id",
+// });
 module.exports = Bill;

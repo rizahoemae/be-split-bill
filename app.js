@@ -15,6 +15,40 @@ if (mode === "development") {
   sequelize.sync({ alter: true });
 }
 
+const { Item, Bill, User, BillShare } = sequelize.models;
+
+Bill.hasMany(Item, { foreignKey: "item_id", as: "items" });
+Item.belongsTo(Bill, {
+  foreignKey: "bill_id",
+});
+
+
+Item.hasMany(BillShare, {
+  foreignKey: "item_id",
+  as: 'items'
+});
+
+BillShare.belongsTo(Item, {
+  foreignKey: "item_id",
+  as: 'items'
+});
+
+Bill.hasMany(BillShare, {
+  foreignKey: 'bill_id', 
+  as: 'participants'
+
+})
+BillShare.belongsTo(Bill, {
+  foreignKey: 'bill_id', 
+  as: 'participants'
+})
+
+User.hasMany(BillShare, {
+  foreignKey: "user_id",
+});
+BillShare.belongsTo(User, {
+  foreignKey: "user_id",
+});
 sequelize
   .authenticate()
   .then(async () => {

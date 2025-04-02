@@ -11,6 +11,9 @@ const Item = sequelize.define(
     bill_id: {
       type: DataTypes.STRING,
     },
+    bill_share_id: {
+      type: DataTypes.STRING,
+    },
     name: {
       type: DataTypes.STRING,
       allowNull: false,
@@ -48,8 +51,7 @@ const Item = sequelize.define(
   }
 );
 
-Item.belongsTo(Bill, {
-  foreignKey: "bill_id",
-  targetKey: "bill_id",
-});
+// Item.belongsTo(Bill, {
+//   foreignKey: "bill_id",
+// });
 module.exports = Item;
