@@ -1,5 +1,6 @@
 const auth = require("./auth.route");
 const bill = require("./bill.route");
+const storage = require("./storage.route");
 
 const express = require("express");
 const router = express.Router();
@@ -12,6 +13,11 @@ const defaultRoutes = [
   {
     path: "/bill",
     route: bill,
+    middleware: validateToken(),
+  },
+  {
+    path: "/storage",
+    route: storage,
     middleware: validateToken(),
   },
 ];
