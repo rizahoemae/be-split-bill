@@ -18,10 +18,9 @@ const create = async (req, res) => {
         .jpeg({ mozjpeg: true })
         .toBuffer()
         .then((img) => {
-          console.log({ img });
           const fileParams = {
             ...params,
-            Key: file.originalname,
+            Key: uuidv4(),
             Body: img,
             ContentType: file.mimetype,
           };
