@@ -1,6 +1,5 @@
 const Bill = require("../model/bill.model");
 const { status } = require("http-status");
-const { apiError, response } = require("../utils");
 const { v4: uuidv4 } = require("uuid");
 const redis = require("../config/redis");
 const Item = require("../model/item.model");
@@ -8,21 +7,28 @@ const Item = require("../model/item.model");
 const BillShare = require("../model/bill-share.model");
 const sequelize = require("../config/db");
 const User = require("../model/user.model");
-const {GoogleGenAI, Type} = require('@google/genai')
+const { GoogleGenAI, Type } = require("@google/genai");
+const { create: createFile } = require("./storage.service");
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 const ai = new GoogleGenAI({ apiKey: GEMINI_API_KEY });
 
-const getAll = async (req, res) => {
-  const bills = await Bill.findAll({ where: { is_deleted: 0 } });
-  if (!bills) {
-    return apiError(res, status.NOT_FOUND, "No bills found");
+const getAll = async () => {
+  try {
+    const bills = await Bill.findAll({ where: { is_deleted: 0 } });
+    return bills;
+  } catch (err) {
+    if (err.code == 404) {
+      const error = new Error("No bills found");
+      error.statusCode = status.NOT_FOUND;
+      throw error;
+    }
+    throw err;
   }
-  return response(res, bills);
 };
 
-const create = async (req, res) => {
+const create = async (form) => {
   const payload = {
-    ...req,
+    ...form,
     bill_id: uuidv4(),
   };
   try {
@@ -49,45 +55,17 @@ const create = async (req, res) => {
       );
       await BillShare.bulkCreate(billShare, { transaction: t });
 
-      //create participants
-      // const participants = payload.participants.map((participant) => ({
-      //   ...participant,
-      //   participant_id: uuidv4(),
-      //   bill_id: payload.bill_id,
-      // }));
-      // await Participant.bulkCreate(participants, { transaction: t });
-
-      // for (const participant of payload.participants) {
-      //   const totalDue = await BillShare.sum("amount", {
-      //     where: {
-      //       user_id: participant.user_id,
-      //       bill_id: payload.bill_id,
-      //     },
-      //     transaction: t,
-      //   });
-
-      //   await Participant.update(
-      //     { total_due: totalDue || 0 },
-      //     {
-      //       where: {
-      //         user_id: participant.user_id,
-      //         bill_id: payload.bill_id,
-      //       },
-      //       transaction: t,
-      //     }
-      //   );
-      // }
       return bills;
     });
-    return response(res, result);
+    return result;
   } catch (err) {
     if (err.parent.code == "WARN_DATA_TRUNCATED") {
       const columnName = err.parent.sqlMessage.match(/column '(\w+)'/)[1];
-      return apiError(
-        res,
-        status.BAD_REQUEST,
+      const error = new Error(
         `Incorrect ENUM value for column '${columnName}'`
       );
+      error.statusCode = status.BAD_REQUEST;
+      throw error;
     }
 
     if (err.name === "SequelizeValidationError") {
@@ -95,20 +73,17 @@ const create = async (req, res) => {
       err.errors.map((er) => {
         errObj[er.path] = er.message;
       });
-      return apiError(res, status.BAD_REQUEST, errObj);
+      const error = new Error(errObj);
+      error.statusCode = status.BAD_REQUEST;
+      throw error;
     }
-
-    return apiError(
-      res,
-      status.BAD_REQUEST,
-      err.message || "Something went wrong"
-    );
+    throw err;
   }
 };
 
-const scan = async (req, res) => {
+const scan = async (url) => {
   try {
-    const imageFetch = await fetch(req.url);
+    const imageFetch = await fetch(url);
     const imageArrayBuffer = await imageFetch.arrayBuffer();
     const base64ImageData = Buffer.from(imageArrayBuffer).toString("base64");
     const result = await ai.models.generateContent({
@@ -120,7 +95,9 @@ const scan = async (req, res) => {
             data: base64ImageData,
           },
         },
-        { text: "Extract information from this image" },
+        {
+          text: "Extract information from this image. Format every date you found to 'YYYY-MM-DD' format.",
+        },
       ],
       config: {
         responseMimeType: "application/json",
@@ -191,20 +168,28 @@ const scan = async (req, res) => {
         },
       },
     });
-    return response(res, JSON.parse(result.candidates[0].content.parts[0].text));
+    return JSON.parse(result.candidates[0].content.parts[0].text);
   } catch (err) {
-    return apiError(
-      res,
-      err.code || status.BAD_REQUEST,
-      err.message || "Something went wrong"
-    );
+    throw err;
   }
 };
 
-const getOne = async (req, res) => {
+const uploadScan = async (file) => {
+  try {
+    const uploadedFiles = await createFile(file);
+    if (uploadedFiles.length > 0) {
+      const result = await scan(uploadedFiles[0].url);
+      return result;
+    }
+  } catch (err) {
+    throw err;
+  }
+};
+
+const getOne = async (id) => {
   try {
     const bills = await Bill.findOne({
-      where: { bill_id: req.id, is_deleted: 0 },
+      where: { bill_id: id, is_deleted: 0 },
       include: [
         {
           model: BillShare,
@@ -252,62 +237,73 @@ const getOne = async (req, res) => {
         return acc;
       }, []),
     };
-
-    return response(res, formatted);
+    return formatted;
   } catch (err) {
-    console.log({ err });
+    throw err;
   }
 };
 
-const findOne = async (req, res) => {
-  const bills = await Bill.findOne({
-    where: { bill_id: req.id, is_deleted: 0 },
-  });
-  if (!bills) {
-    return apiError(res, status.NOT_FOUND, "No bill found");
+const findOne = async (id) => {
+  try {
+    const bills = await Bill.findOne({
+      where: { bill_id: id, is_deleted: 0 },
+    });
+    if (!bills) {
+      const error = new Error("No bill found");
+      error.statusCode = status.NOT_FOUND;
+      throw error;
+    }
+    return bills;
+  } catch (err) {
+    if (err.code == 404) {
+      err.message = "No bill found";
+    }
+    throw err;
   }
-  return bills;
 };
 
-const updateOne = async (req, res) => {
-  const bills = await findOne(req, res);
-  if (!bills) {
-    return apiError(res, status.NOT_FOUND, "No bill found");
+const updateOne = async (id, data) => {
+  try {
+    const bills = await findOne(id);
+    const update = await bills.update(data, { where: { bill_id: id } });
+    return update;
+  } catch (err) {
+    console.log(err);
+    throw err;
   }
-  const update = await bills.update(req.body, { where: { bill_id: req.id } });
-  return update;
 };
 
-const deleteOne = async (req, res) => {
-  const bill = await updateOne({ id: req.id, body: { is_deleted: 1 } }, res);
+const deleteOne = async (id) => {
+  const bill = await updateOne(id, { is_deleted: 1 });
   if (!bill) {
-    return apiError(res, status.NOT_FOUND, "No bill found");
+    const error = new Error("No bill found");
+    error.statusCode = status.NOT_FOUND;
+    throw error;
   }
   try {
     const result = await sequelize.transaction(async (t) => {
       await Item.update(
         { is_deleted: 1 },
-        { where: { bill_id: req.id } },
+        { where: { bill_id: id } },
         { transaction: t }
       );
       const update = bill.update(
         { is_deleted: 1 },
-        { where: { bill_id: req.id } },
+        { where: { bill_id: id } },
         { transaction: t }
       );
       return update;
     });
-    return response(res, "Bill deleted successfully");
+    return "Bill deleted successfully";
   } catch (err) {
-    console.log({ err });
-    // return apiError(res, status.NOT_FOUND, "No bill found");
+    throw err;
   }
 };
 
-const updatePayment = async (req, res) => {
+const updatePayment = async (id, payment) => {
   try {
     const result = await sequelize.transaction(async (t) => {
-      req.body.confirm_payment.forEach(async (cp) => {
+      payment.forEach(async (cp) => {
         await BillShare.update(
           { status: cp.status },
           {
@@ -319,20 +315,19 @@ const updatePayment = async (req, res) => {
         );
       });
       const foundBillShare = await BillShare.findAll({
-        where: { bill_id: req.params.id },
+        where: { bill_id: id },
         transaction: t,
       });
       if (foundBillShare.every((bs) => bs.status == "paid")) {
         await Bill.update(
           { status: "paid" },
-          { where: { bill_id: req.params.id }, transaction: t }
+          { where: { bill_id: id }, transaction: t }
         );
       }
     });
-
-    return response(res, req.body.confirm_payment);
+    return payment;
   } catch (error) {
-    console.log({ error });
+    throw error;
   }
 };
 
@@ -344,4 +339,5 @@ module.exports = {
   updateOne,
   updatePayment,
   scan,
+  uploadScan,
 };

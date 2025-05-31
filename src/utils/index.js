@@ -4,10 +4,11 @@ const catchAsync = (fn) => (req, res, next) => {
   Promise.resolve(fn(req, res, next)).catch((err) => next(err));
 };
 
-const apiError = (res, code, message) => {
-  return res.status(code).send({
-    status_code: code,
-    message: message,
+const apiError = (res, error) => {
+  return res.status(error.statusCode || 500).send({
+    status_code: error.statusCode || 500,
+    message: error.message || "Internal Server Error",
+    ...(error.stack ? { trace: error.stack } : {}),
   });
 };
 

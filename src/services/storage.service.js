@@ -1,13 +1,11 @@
 const { status } = require("http-status");
-const { apiError, response } = require("../utils");
 const { v4: uuidv4 } = require("uuid");
 const sharp = require("sharp");
 const sequelize = require("../config/db");
 const s3 = require("../config/s3");
 
-const create = async (req, res) => {
+const create = async (files) => {
   try {
-    const files = req.files.files || req.files.file;
     let params = {
       Bucket: process.env.S3_BUCKET_NAME,
       ACL: "public-read",
@@ -18,6 +16,7 @@ const create = async (req, res) => {
         .jpeg({ mozjpeg: true })
         .toBuffer()
         .then((img) => {
+          console.log({ img });
           const fileParams = {
             ...params,
             Key: uuidv4(),
@@ -30,16 +29,17 @@ const create = async (req, res) => {
           throw err;
         });
     });
-    const results = await Promise.all(uploads);
-    return response(res, results);
+    const result = await Promise.all(uploads);
+    return result.map((item) => {
+      return {
+        url: item.Location,
+      };
+    });
   } catch (err) {
-    return apiError(
-      res,
-      err.code || 500,
-      err.message || "Internal Server Error"
-    );
+    return err;
   }
 };
+
 const createBulk = async (req, res) => {
   const files = req.files.path;
 };
