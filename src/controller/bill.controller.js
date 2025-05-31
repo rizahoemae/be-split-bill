@@ -12,6 +12,11 @@ const create = catchAsync(async (req, res) => {
   res.status(status.OK).send(user);
 });
 
+const scan = catchAsync(async (req, res) => {
+  const user = await billService.scan(req.body, res);
+  res.status(status.OK).send(user);
+});
+
 const getOne = catchAsync(async (req, res) => {
   const user = await billService.getOne(req.params, res);
   res.status(status.OK).send(user);
@@ -33,4 +38,5 @@ module.exports = {
   getOne,
   deleteOne,
   updatePayment,
+  scan
 };

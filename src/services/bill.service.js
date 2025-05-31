@@ -8,6 +8,9 @@ const Item = require("../model/item.model");
 const BillShare = require("../model/bill-share.model");
 const sequelize = require("../config/db");
 const User = require("../model/user.model");
+const {GoogleGenAI, Type} = require('@google/genai')
+const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
+const ai = new GoogleGenAI({ apiKey: GEMINI_API_KEY });
 
 const getAll = async (req, res) => {
   const bills = await Bill.findAll({ where: { is_deleted: 0 } });
@@ -98,6 +101,101 @@ const create = async (req, res) => {
     return apiError(
       res,
       status.BAD_REQUEST,
+      err.message || "Something went wrong"
+    );
+  }
+};
+
+const scan = async (req, res) => {
+  try {
+    const imageFetch = await fetch(req.url);
+    const imageArrayBuffer = await imageFetch.arrayBuffer();
+    const base64ImageData = Buffer.from(imageArrayBuffer).toString("base64");
+    const result = await ai.models.generateContent({
+      model: "gemini-2.5-flash-preview-05-20",
+      contents: [
+        {
+          inlineData: {
+            mimeType: "image/jpeg",
+            data: base64ImageData,
+          },
+        },
+        { text: "Extract information from this image" },
+      ],
+      config: {
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: Type.OBJECT,
+          properties: {
+            products: {
+              type: Type.ARRAY,
+              items: {
+                type: Type.OBJECT,
+                properties: {
+                  name: {
+                    type: Type.STRING,
+                  },
+                  quantity: {
+                    type: Type.NUMBER,
+                  },
+                  price: {
+                    type: Type.NUMBER,
+                  },
+                  total: {
+                    type: Type.NUMBER,
+                  },
+                },
+              },
+            },
+            payment_detail: {
+              type: Type.OBJECT,
+              properties: {
+                subtotal: {
+                  type: Type.NUMBER,
+                },
+                tax: {
+                  type: Type.NUMBER,
+                },
+                discount: {
+                  type: Type.NUMBER,
+                },
+                service: {
+                  type: Type.NUMBER,
+                },
+                rounding: {
+                  type: Type.NUMBER,
+                },
+                others: {
+                  type: Type.NUMBER,
+                },
+                grand_total: {
+                  type: Type.NUMBER,
+                },
+              },
+            },
+            store_detail: {
+              type: Type.OBJECT,
+              properties: {
+                name: {
+                  type: Type.STRING,
+                },
+                address: {
+                  type: Type.STRING,
+                },
+              },
+            },
+            created_date: {
+              type: Type.STRING,
+            },
+          },
+        },
+      },
+    });
+    return response(res, JSON.parse(result.candidates[0].content.parts[0].text));
+  } catch (err) {
+    return apiError(
+      res,
+      err.code || status.BAD_REQUEST,
       err.message || "Something went wrong"
     );
   }
@@ -245,4 +343,5 @@ module.exports = {
   deleteOne,
   updateOne,
   updatePayment,
+  scan,
 };
