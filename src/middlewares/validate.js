@@ -13,11 +13,16 @@ const validateToken = () => {
   return async (req, res, next) => {
     const token = req.headers.authorization;
     if (!token) {
-      return apiError(res, status.UNAUTHORIZED, "Token not found");
+      const error = new Error("Token not found");
+      return apiError(res, error);
     }
     const result = await User.compareAccessToken(token.split(" ")[1]);
     if (result instanceof Error) {
-      return apiError(res, status.UNAUTHORIZED, "Invalid or expired token");
+      if (result.message == "jwt expired") {
+        result.message = "Invalid or expired token";
+        result.statusCode = status.UNAUTHORIZED;
+      }
+      return apiError(res, result);
     }
     next();
   };
