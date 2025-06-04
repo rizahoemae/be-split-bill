@@ -179,7 +179,7 @@ const uploadScan = async (file) => {
     const uploadedFiles = await createFile(file);
     if (uploadedFiles.length > 0) {
       const result = await scan(uploadedFiles[0].url);
-      return result;
+      return { ...result, image_url: uploadedFiles[0].url };
     }
   } catch (err) {
     throw err;
@@ -208,6 +208,11 @@ const getOne = async (id) => {
         },
       ],
     });
+    if (!bills) {
+      const error = new Error("No bill found");
+      error.statusCode = status.NOT_FOUND;
+      throw error;
+    }
     const formatted = {
       ...bills.toJSON(),
       participants: bills.participants.reduce((acc, bill) => {
