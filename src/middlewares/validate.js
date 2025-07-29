@@ -1,6 +1,8 @@
 const User = require("../model/user.model");
 const { status } = require("http-status");
 const { apiError, response } = require("../utils");
+const { query, validationResult } = require("express-validator");
+
 const validate = (schema) => (req, res, next) => {
   const result = schema.safeParse(req.body);
   if (!result.success) {
@@ -8,6 +10,20 @@ const validate = (schema) => (req, res, next) => {
   }
   next();
 };
+
+const validationQuery = [
+  query("page").isInt({ min: 1 }).withMessage("Page must be a number"),
+  query("page_size")
+    .isInt({ min: 1 })
+    .withMessage("Page size must be a number"),
+  (req, res, next) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return apiError(res, { statusCode: 400, message: errors.array() });
+    }
+    next();
+  },
+];
 
 const validateToken = () => {
   return async (req, res, next) => {
@@ -24,7 +40,8 @@ const validateToken = () => {
       }
       return apiError(res, result);
     }
+    req.body.me = result;
     next();
   };
 };
-module.exports = { validate, validateToken };
+module.exports = { validate, validateToken, validationQuery };

@@ -4,8 +4,8 @@ const billService = require("../services/bill.service");
 
 const getAll = catchAsync(async (req, res) => {
   try {
-    const result = await billService.getAll(req.body, res);
-    return response(res, result, "Successfully list the bills");
+    const { data, pagination } = await billService.getAll(req, res);
+    return response(res, data, pagination, "Successfully list the bills");
   } catch (err) {
     return apiError(res, err);
   }

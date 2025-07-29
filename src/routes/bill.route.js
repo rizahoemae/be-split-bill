@@ -2,12 +2,13 @@ const express = require("express");
 const router = express.Router();
 const billController = require("../controller/bill.controller");
 const multer = require("multer");
+const { validationQuery } = require("../middlewares/validate");
 
 const upload = multer({
   storage: multer.memoryStorage(),
 });
 
-router.get("/", billController.getAll);
+router.get("/", validationQuery, billController.getAll);
 router.post("/create", billController.create);
 router.post("/scan", billController.scan);
 router.post(
