@@ -51,12 +51,22 @@ const Bill = sequelize.define(
       allowNull: false,
       defaultValue: false,
     },
+    created_by: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
   },
   {
     tableName: "bills",
     timestamps: true,
     createdAt: "created_at",
     updatedAt: "updated_at",
+    indexes: [
+      {
+        fields: ["created_by"],
+        name: "created_by_index",
+      },
+    ],
   }
 );
 

@@ -34,6 +34,10 @@ const BillShare = sequelize.define(
       allowNull: false,
       defaultValue: false,
     },
+    created_by: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
   },
   {
     tableName: "bill_share",
@@ -44,6 +48,10 @@ const BillShare = sequelize.define(
       {
         fields: ["bill_id"],
         name: "bill_id_index",
+      },
+      {
+        fields: ["created_by"],
+        name: "created_by_index",
       },
     ],
   }

@@ -22,26 +22,32 @@ Item.belongsTo(Bill, {
   foreignKey: "bill_id",
 });
 
+User.hasMany(Bill, { foreignKey: "created_by", sourceKey: "user_id" });
+Bill.belongsTo(User, { foreignKey: "created_by", targetKey: "user_id" });
+
+User.hasMany(Item, { foreignKey: "created_by", sourceKey: "user_id" });
+Item.belongsTo(User, { foreignKey: "created_by", targetKey: "user_id" });
+
+User.hasMany(BillShare, { foreignKey: "created_by", sourceKey: "user_id" });
+BillShare.belongsTo(User, { foreignKey: "created_by", targetKey: "user_id" });
 
 Item.hasMany(BillShare, {
   foreignKey: "item_id",
-  as: 'items'
+  as: "items",
 });
-
 BillShare.belongsTo(Item, {
   foreignKey: "item_id",
-  as: 'items'
+  as: "items",
 });
 
 Bill.hasMany(BillShare, {
-  foreignKey: 'bill_id', 
-  as: 'participants'
-
-})
+  foreignKey: "bill_id",
+  as: "participants",
+});
 BillShare.belongsTo(Bill, {
-  foreignKey: 'bill_id', 
-  as: 'participants'
-})
+  foreignKey: "bill_id",
+  as: "participants",
+});
 
 User.hasMany(BillShare, {
   foreignKey: "user_id",

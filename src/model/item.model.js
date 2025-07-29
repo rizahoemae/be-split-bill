@@ -36,6 +36,10 @@ const Item = sequelize.define(
       allowNull: false,
       defaultValue: false,
     },
+    created_by: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
   },
   {
     tableName: "items",
@@ -46,6 +50,10 @@ const Item = sequelize.define(
       {
         fields: ["bill_id"],
         name: "bill_id_index",
+      },
+      {
+        fields: ["created_by"],
+        name: "created_by_index",
       },
     ],
   }
