@@ -11,11 +11,51 @@ const { GoogleGenAI, Type } = require("@google/genai");
 const { create: createFile } = require("./storage.service");
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 const ai = new GoogleGenAI({ apiKey: GEMINI_API_KEY });
-
-const getAll = async () => {
+const getAll = async (req, res) => {
   try {
-    const bills = await Bill.findAll({ where: { is_deleted: 0 } });
-    return bills;
+    const allBills = await Bill.findAndCountAll({
+      where: { is_deleted: 0, created_by: req.body.me.user_id },
+      limit: req.query.page_size ? Number(req.query.page_size) : 10,
+      offset: req.query.page
+        ? (Number(req.query.page) - 1) * Number(req.query.page_size)
+        : 0,
+      order: [["created_at", "DESC"]],
+      include: [
+        {
+          model: BillShare,
+          as: "participants",
+          include: [
+            {
+              model: User,
+              attributes: ["name", "email"],
+            },
+          ],
+        },
+      ],
+    });
+    const formattedBills = allBills.rows.reduce((acc, bill) => {
+      const monthKey = bill.created_at.toISOString().slice(0, 7);
+      if (!acc[monthKey]) {
+        acc[monthKey] = [];
+      }
+      acc[monthKey].push(bill);
+      return acc;
+    }, {});
+
+    const totalData = await Bill.count({
+      where: { is_deleted: 0, created_by: req.body.me.user_id },
+    });
+    return {
+      data: {
+        formattedBills,
+      },
+      pagination: {
+        page: Number(req.query.page),
+        page_size: Number(req.query.page_size),
+        total_rows: allBills.count,
+        total_data: totalData,
+      },
+    };
   } catch (err) {
     if (err.code == 404) {
       const error = new Error("No bills found");
@@ -30,19 +70,25 @@ const create = async (form) => {
   const payload = {
     ...form,
     bill_id: uuidv4(),
+    created_by: form.me.user_id,
   };
   try {
     const result = await sequelize.transaction(async (t) => {
       //create bill
-      const bills = await Bill.create(payload, { transaction: t });
+      const bills = await Bill.create(payload, {
+        transaction: t,
+      });
 
       //create items
       const items = payload.items.map((item) => ({
         ...item,
         item_id: uuidv4(),
         bill_id: payload.bill_id,
+        created_by: form.me.user_id,
       }));
-      await Item.bulkCreate(items, { transaction: t });
+      await Item.bulkCreate(items, {
+        transaction: t,
+      });
 
       //create bill share
       const billShare = items.flatMap((item) =>
@@ -51,15 +97,18 @@ const create = async (form) => {
           bill_share_id: uuidv4(),
           bill_id: payload.bill_id,
           item_id: item.item_id,
+          created_by: form.me.user_id,
         }))
       );
-      await BillShare.bulkCreate(billShare, { transaction: t });
+      await BillShare.bulkCreate(billShare, {
+        transaction: t,
+      });
 
       return bills;
     });
     return result;
   } catch (err) {
-    if (err.parent.code == "WARN_DATA_TRUNCATED") {
+    if (err.parent?.code == "WARN_DATA_TRUNCATED") {
       const columnName = err.parent.sqlMessage.match(/column '(\w+)'/)[1];
       const error = new Error(
         `Incorrect ENUM value for column '${columnName}'`
