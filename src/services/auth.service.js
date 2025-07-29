@@ -7,6 +7,7 @@ const setToken = async (form) => {
   try {
     const payload = {
       email: form.email,
+      user_id: form.user_id,
     };
     const refresh_token = User.generateRefreshToken(payload);
     await redis.set(form.email, refresh_token);
@@ -41,7 +42,15 @@ const loginUser = async (form) => {
       throw error;
     }
     const token = await setToken(userObj);
-    return token;
+    const { name, email, phone } = user;
+    return {
+      ...token,
+      user: {
+        name,
+        email,
+        phone,
+      },
+    };
   } catch (err) {
     throw err;
   }
