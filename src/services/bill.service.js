@@ -27,13 +27,30 @@ const getAll = async (req, res) => {
           include: [
             {
               model: User,
-              attributes: ["name", "email"],
+              attributes: ["user_id", "name", "email"],
             },
           ],
         },
       ],
+      /* TODO:
+      1. includes participant overview (profile only, get from bill share)
+      */
     });
-    const formattedBills = allBills.rows.reduce((acc, bill) => {
+    const billsWithUsers = allBills.rows.map((bill) => {
+      const uniqueUsersMap = new Map();
+      if (bill.participants) {
+        bill.participants.forEach((share) => {
+          if (share.User) {
+            uniqueUsersMap.set(share.User.user_id, share.User);
+          }
+        });
+      }
+      const billJson = bill.toJSON();
+      billJson.participants = Array.from(uniqueUsersMap.values());
+      return billJson;
+    });
+
+    const formattedBills = billsWithUsers.reduce((acc, bill) => {
       const monthKey = bill.created_at.toISOString().slice(0, 7);
       if (!acc[monthKey]) {
         acc[monthKey] = [];
@@ -46,9 +63,7 @@ const getAll = async (req, res) => {
       where: { is_deleted: 0, created_by: req.body.me.user_id },
     });
     return {
-      data: {
-        formattedBills,
-      },
+      data: formattedBills,
       pagination: {
         page: Number(req.query.page),
         page_size: Number(req.query.page_size),
